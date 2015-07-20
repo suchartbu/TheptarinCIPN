@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CIPN>
+  <Header>
+    <DocCLass></DocCLass>
+    <DocSysID version="1.0"></DocSysID>
+    <serviceEvent></serviceEvent>
+    <authorID></authorID>
+    <authorName></authorName>
+    <DocumentRef></DocumentRef>
+    <effectiveTime></effectiveTime>
+  </Header>
+  <ClaimAuth>
+    <AuthCode></AuthCode>
+    <AuthDT></AuthDT>
+  </ClaimAuth>
+  <IPADT>
+</IPADT>
+  <IPDxOp Reccount="0"></IPDxOp>
+  <Invoices>
+    <Invoice>
+      <InvNumber></InvNumber>
+      <InvDT></InvDT>
+      <InvItems Reccount="0"></InvItems>
+      <InvTotal></InvTotal>
+      <InvAddDiscount></InvAddDiscount>
+    </Invoice>
+  </Invoices>
+  <CIPNClaim>
+    <FeeScheduleItems></FeeScheduleItems>
+    <DeductRoomBoard></DeductRoomBoard>
+    <nonDeductRoomBoard>
+    </nonDeductRoomBoard>
+    <DeductMedDev />
+    <nonDeductMedDev />
+  </CIPNClaim>
+  <CoInsurance>
+    <Insurance>
+      <InsuranceClass>
+      </InsuranceClass>
+      <InsTotal>
+      </InsTotal>
+      <InsRoomBoard>
+      </InsRoomBoard>
+      <InsProfFee>
+      </InsProfFee>
+      <InsOther>
+      </InsOther>
+    </Insurance>
+  </CoInsurance>
+  <PatCopay>
+    <nonDeductRoomBoard>0.00</nonDeductRoomBoard>
+    <nonDeductMedDev>0.00</nonDeductMedDev>
+    <ProfFee>0.00</ProfFee>
+    <Surcharge>0.00</Surcharge>
+    <nonMedCare>0.00</nonMedCare>
+  </PatCopay>
+  <Referral />
+</CIPN>
+<?EndNote HMAC = "" ?>
