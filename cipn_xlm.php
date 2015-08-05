@@ -6,6 +6,10 @@
  * and open the template in the editor.
  */
 
+class my_exception extends Exception {
+    
+}
+
 /**
  * โปรแกรมสร้างไฟล์ CIPN ตัวอย่างข้อมูลจากไฟล์ 11720-CIPN-5800001-20150517213147.xml
  * 1. สร้าง xlm ไฟล์เริ่มต้นด้วย DomDocument('1.0', 'utf-8')
@@ -31,12 +35,21 @@ class cipn_xlm {
     private $file_datetime = 0;
 
     /**
-     * ข้อมูลเกี่ยวกับผู้ป่วยที่เบิกค่ารักษา
+     * ข้อมูลเกี่ยวกับผู้ป่วยที่เบิกค่ารักษา จากตาราง drgs_ipadt
      * 1. IPADT ค่าตามที่กำหนดใน XML
      * 2. auth_code รหัสอ้างอิงจากระบบ PAA
      * 3. auth_dt วันทีเวลาในเอกสารตอบกลับ PAA
      */
     private $drgs_ipadt = null;
+
+    /**
+     * ข้อมูลวินิจฉัยและหัตถการ จากตาราง drgs_ipdxop
+     * 1. auth_code รหัสอ้างอิงจากระบบ PAA
+     * 2. ipdxop ค่าตามที่กำหนดใน XML ส่วนแรก
+     * 3. datein วันเวลาที่เริ่ม
+     * 4. dateout วันเวลาที่สิ้นสุด
+     */
+    private $drgs_ipdxop = null;
 
     public function __construct($an) {
         if ($an == 0) {
@@ -70,31 +83,55 @@ class cipn_xlm {
             PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
         );
         $db_conn = new PDO($dsn, $username, $password, $options);
-        //$sql = 'SELECT * FROM `drgs_ipadt` where `an` = :an';
-        $sql = "SELECT concat(`an`,'|',`hn`,'|',`idtype`,'|',`pidpat`,'|',`title`,'|',`namepat`,'|',DATE_FORMAT( `dob`, '%Y%m%d' ),'|',`sex`,'|',`marriage`,'|',`changwat`,'|',`amphur`,'|',`nation`,'|',DATE_FORMAT( `dateadm`, '%Y%m%d' ),'|',`timeadm`,'|',DATE_FORMAT(`datedsc`, '%Y%m%d' ),'|',`timedsc`,'|',`leaveday`,'|',`dconfirm`,'|',`dischs`,'|',`discht`,'|',`adm_w`,'|',`dischward`,'|',`dept`,'|',`svctype`,'|',`svccode`,'|',`ubclass`,'|',`ucareplan`,'|',`projcode`,'|',`eventcode`,'|',`usercode`) AS `IPADT` , `auth_code`,`auth_dt` FROM `drgs_ipadt` WHERE `an` = :an";
+        $sql = "SELECT concat(`an`,'|',`hn`,'|',`idtype`,'|',`pidpat`,'|',`title`,'|',`namepat`,'|',DATE_FORMAT( `dob`, '%Y%m%d' ),'|',`sex`,'|',`marriage`,'|',`changwat`,'|',`amphur`,'|',`nation`,'|',DATE_FORMAT( `dateadm`, '%Y%m%d' ),'|',`timeadm`,'|',DATE_FORMAT(`datedsc`, '%Y%m%d' ),'|',`timedsc`,'|',`leaveday`,'|',`dconfirm`,'|',`dischs`,'|',`discht`,'|',`adm_w`,'|',`dischward`,'|',`dept`,'|',`svctype`,'|',`svccode`,'|',`ubclass`,'|',`ucareplan`,'|',`projcode`,'|',`eventcode`,'|',`usercode`) AS `ipadt` , `auth_code`,`auth_dt` FROM `drgs_ipadt` WHERE `an` = :an";
         $stmt = $db_conn->prepare($sql);
         $stmt->execute(array("an" => $this->an));
         $this->drgs_ipadt = $stmt->fetch();
+
         //print_r($this->drgs_ipadt);
+    }
+
+    /**
+     * ค้นหาข้อมูลจาก AuthCode ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน IPDxOP
+     * @access private
+     */
+    private function get_drgs_ipdxop($auth_code) {
+        $dsn = 'mysql:host=10.1.99.6;dbname=theptarin_utf8';
+        $username = 'orr-projects';
+        $password = 'orr-projects';
+        $options = array(
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+        );
+        $db_conn = new PDO($dsn, $username, $password, $options);
+        $sql = "SELECT  `id`,`auth_code`,concat(`class`,'|',`subclass`,'|',`code`,'|',`dr`) AS `ipdxop` , `datein`, `dateout` FROM `drgs_ipdxop` WHERE `auth_code` = :auth_code";
+        $stmt = $db_conn->prepare($sql);
+        $stmt->execute(array("auth_code" => $auth_code));
+        $rec_count = $stmt->rowCount();
+        $this->drgs_ipdxop = $stmt->fetchAll();
+        return $rec_count;
     }
 
     /**
      * กำหนดรูปแบบข้อมูลวันที่ตามที่กำหนด
      * ตัวอย่างรูปแบบ '20150517:141800' กำหนดเป็น 'Ymd:His'
+     * กรณีเป็นวันที่ก่อน 01/01/2015 จะคืนค่าว่าง แทนค่าวันที่
      * @param string $str_date ตัวอักษรวันที่
      * @param string $str_format รูปแบบวันที่เวลา ที่กำหนด
      * @return string ตัวอักษรวันที่ตามรูปแบบที่กำหนด
      */
-    private function get_data_format($str_date, $str_format) {
+    private function get_data_format($str_date, $str_format = 'Ymd:His') {
         $obj_date = new DateTime($str_date);
-        $my_date = date_format($obj_date, $str_format);
+        if ($obj_date->getTimestamp() > strtotime('2015-01-01')) {
+            $my_date = date_format($obj_date, $str_format);
+        } else {
+            $my_date = null;
+        }
         return $my_date;
     }
 
     /**
      * Header เป็นข้อมูลที่เกี่ยวข้องกับประเภทเอกสาร และผู้จัดทำเอกสาร ซึ่งรพ. จะใช้ AN. เป็นรหัสอ้างอิง
      * @access private
-     * @
      */
     private function Header() {
         $this->dom->getElementsByTagName('DocCLass')->item(0)->nodeValue = 'IPDClaim';
@@ -120,14 +157,20 @@ class cipn_xlm {
      * @access private
      */
     private function IPADT() {
-        $this->dom->getElementsByTagName('IPADT')->item(0)->nodeValue = $this->drgs_ipadt['IPADT'];
+        $this->dom->getElementsByTagName('IPADT')->item(0)->nodeValue = $this->drgs_ipadt['ipadt'];
     }
 
+    /**
+     * IPDxOp ส่วน xml ข้อมูลวินิจฉัยและหัตถการ
+     * @access private
+     */
     private function IPDxOp() {
-        $node_value = "5800001|P|1|741|23478|20150512:192000|20150512:200500\n";
-        $node_value .= "5800001|D|1|O342|23478||\n";
-        $node_value .= "5800001|D|2|O820|23478||\n";
-        $this->dom->getElementsByTagName('IPDxOp')->item(0)->setAttribute('Reccount', '3');
+        $rec_count = $this->get_drgs_ipdxop($this->drgs_ipadt['auth_code']);
+        $node_value = "";
+        foreach ($this->drgs_ipdxop as $value) {
+            $node_value .= $this->an . "|" . $value['ipdxop'] . "|" . $this->get_data_format($value['datein']) . "|" . $this->get_data_format($value['dateout']) . "|\n";
+        }
+        $this->dom->getElementsByTagName('IPDxOp')->item(0)->setAttribute('Reccount', $rec_count);
         $this->dom->getElementsByTagName('IPDxOp')->item(0)->nodeValue = $node_value;
     }
 
