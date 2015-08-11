@@ -16,6 +16,7 @@ class my_exception extends Exception {
  * 2. สร้างแต่ละส่วนของ xml ทั้งหมด
  * 3. แปลงไฟล์ utf-8 เป็น windows-874
  * @author orr
+ * @link https://drive.google.com/file/d/0B-ZGLhvwK9V7YUttVk4zV2FOVjg/view?usp=sharing ข้อกำหนดไฟล์ CIPN
  */
 class cipn_xlm {
 
@@ -50,6 +51,12 @@ class cipn_xlm {
      * 4. dateout วันเวลาที่สิ้นสุด
      */
     private $drgs_ipdxop = null;
+    
+    /**
+     * ข้อมูลค่ารักษา จากตาราง drgs_invoices
+     * 1. 
+     */
+    private $drgs_invoices = null;
 
     public function __construct($an) {
         if ($an == 0) {
@@ -66,6 +73,7 @@ class cipn_xlm {
         $this->ClaimAuth();
         $this->IPADT();
         $this->IPDxOp();
+        $this->Invoices();
 
         echo $this->dom->saveXML();
     }
@@ -91,6 +99,26 @@ class cipn_xlm {
         //print_r($this->drgs_ipadt);
     }
 
+    /**
+     * ค้นหาข้อมูลจาก AN. ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน IPDxOP
+     * @access private
+     */
+    private function get_drgs_invoices() {
+        $dsn = 'mysql:host=10.1.99.6;dbname=theptarin_utf8';
+        $username = 'orr-projects';
+        $password = 'orr-projects';
+        $options = array(
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+        );
+        $db_conn = new PDO($dsn, $username, $password, $options);
+        $sql = "SELECT  `an`,concat(`an`,'|',`servdate`,'|',`code`) AS `invoices` FROM `drgs_invoices` WHERE `an` = :an";
+        $stmt = $db_conn->prepare($sql);
+        $stmt->execute(array("an" => $this->an));
+        $rec_count = $stmt->rowCount();
+        $this->drgs_invoices = $stmt->fetchAll();
+        return $rec_count;
+    }
+    
     /**
      * ค้นหาข้อมูลจาก AuthCode ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน IPDxOP
      * @access private
@@ -174,6 +202,22 @@ class cipn_xlm {
         $this->dom->getElementsByTagName('IPDxOp')->item(0)->nodeValue = $node_value;
     }
 
+     /**
+     * Invoices ส่วน xml ค่ารักษาทุกรายการ
+     * @access private
+     */
+    private function Invoices() {
+        $rec_count = $this->get_drgs_invoices();
+        //$node_value = "58-0001";
+        /*foreach ($this->drgs_ipdxop as $value) {
+            $node_value .= $this->an . "|" . $value['ipdxop'] . "|" . $this->get_data_format($value['datein']) . "|" . $this->get_data_format($value['dateout']) . "|\n";
+        }*/
+        $this->dom->getElementsByTagName('InvNumber')->item(0)->nodeValue = "58-0001"; //เลข Invoice ขนาดไม่เกิน 9 ตัวอักษร
+        $this->dom->getElementsByTagName('InvDT')->item(0)->nodeValue = "20150517"; //วันเวลาที่ออก Invoice รูปแบบ YYYYMMDD
+        $this->dom->getElementsByTagName('InvItems')->item(0)->setAttribute('Reccount', $rec_count);
+    }
+
+    
     /**
      * save เพื่อสร้างไฟล์ CIPN กำหนดชื่อไฟล์ตามรูป [รหัสรพ.]-CIPN-[AN.]-[$this->file_datetime]-utf8.xml
      * @param string an รหัสอ้างอิงเป็น AN. รพ.
