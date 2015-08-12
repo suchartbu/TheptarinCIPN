@@ -51,12 +51,19 @@ class cipn_xlm {
      * 4. dateout วันเวลาที่สิ้นสุด
      */
     private $drgs_ipdxop = null;
-    
+
     /**
      * ข้อมูลค่ารักษา จากตาราง drgs_invoices
-     * 1. 
+     * 1. invoices ค่าตามที่กำหนดใน XML
+     * 2. amount ยอดรวมแต่ละรายการที่หักส่วนลดแล้ว
      */
     private $drgs_invoices = null;
+    
+    /**
+     * ข้อมูลค่ารักษา จากตาราง drgs_cipn_claim
+     * 
+     */
+    private $drgs_cipn_claim = null;
 
     public function __construct($an) {
         if ($an == 0) {
@@ -74,6 +81,7 @@ class cipn_xlm {
         $this->IPADT();
         $this->IPDxOp();
         $this->Invoices();
+        $this->CIPNClaim();
 
         echo $this->dom->saveXML();
     }
@@ -100,26 +108,6 @@ class cipn_xlm {
     }
 
     /**
-     * ค้นหาข้อมูลจาก AN. ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน IPDxOP
-     * @access private
-     */
-    private function get_drgs_invoices() {
-        $dsn = 'mysql:host=10.1.99.6;dbname=theptarin_utf8';
-        $username = 'orr-projects';
-        $password = 'orr-projects';
-        $options = array(
-            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
-        );
-        $db_conn = new PDO($dsn, $username, $password, $options);
-        $sql = "SELECT  `an`,concat(`an`,'|',`servdate`,'|',`code`) AS `invoices` FROM `drgs_invoices` WHERE `an` = :an";
-        $stmt = $db_conn->prepare($sql);
-        $stmt->execute(array("an" => $this->an));
-        $rec_count = $stmt->rowCount();
-        $this->drgs_invoices = $stmt->fetchAll();
-        return $rec_count;
-    }
-    
-    /**
      * ค้นหาข้อมูลจาก AuthCode ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน IPDxOP
      * @access private
      */
@@ -139,6 +127,46 @@ class cipn_xlm {
         return $rec_count;
     }
 
+    /**
+     * ค้นหาข้อมูลจาก AN. ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน Invoices
+     * @access private
+     */
+    private function get_drgs_invoices() {
+        $dsn = 'mysql:host=10.1.99.6;dbname=theptarin_utf8';
+        $username = 'orr-projects';
+        $password = 'orr-projects';
+        $options = array(
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+        );
+        $db_conn = new PDO($dsn, $username, $password, $options);
+        $sql = "SELECT CONCAT( `drgs_invoices`.`an`, '|', DATE_FORMAT( `servdate`, '%Y%m%d' ), '|', `drgs_charges`.`billgroup`, '|', `drgs_charges`.`cscode`, '|', `drgs_charges`.`code`, '|', `drgs_charges`.`unit`, '|', `drgs_invoices`.`qty`, '|', REPLACE(FORMAT(`drgs_invoices`.`rate`, 2), ',', ''), '|', `drgs_charges`.`revrate`, '|', CONCAT( `drgs_invoices`.`qty` * `drgs_invoices`.`rate`, '.00' ), '|', '0.00' ) AS `invoices`, `drgs_invoices`.`qty` * `drgs_invoices`.`rate` AS `amount`, `drgs_charges`.`billgroup` FROM `theptarin_utf8`.`drgs_charges` AS `drgs_charges`, `theptarin_utf8`.`drgs_invoices` AS `drgs_invoices` WHERE `drgs_invoices`.`an` = :an AND `drgs_invoices`.`code` = CONCAT( `drgs_charges`.`code`, '@', `drgs_charges`.`billgroup` ) ORDER BY `drgs_charges`.`billgroup` ASC";
+        $stmt = $db_conn->prepare($sql);
+        $stmt->execute(array("an" => $this->an));
+        $rec_count = $stmt->rowCount();
+        $this->drgs_invoices = $stmt->fetchAll();
+        return $rec_count;
+    }
+
+     /**
+     * ค้นหาข้อมูลจาก AN. ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน CIPNClaim
+     * @access private
+     */
+    private function get_drgs_cipn_claim() {
+        $dsn = 'mysql:host=10.1.99.6;dbname=theptarin_utf8';
+        $username = 'orr-projects';
+        $password = 'orr-projects';
+        $options = array(
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8',
+        );
+        $db_conn = new PDO($dsn, $username, $password, $options);
+        $sql = "SELECT CONCAT( `drgs_cipn_claim`.`an`, '|',`billgroup`, '|', `cscode`, '|' ,`csqty`, '|', REPLACE(FORMAT(`csrate`, 2), ',', ''), '|',`csrevrate`, '|', REPLACE(FORMAT(`claim`, 2), ',', ''), '|',REPLACE(FORMAT(`amount`, 2), ',', ''),'|',REPLACE(FORMAT(`discount`, 2), ',', ''),'|',`rcat`,'|',`srid`) AS `cipnclaim` , `claim` FROM `theptarin_utf8`.`drgs_charges` AS `drgs_charges`, `theptarin_utf8`.`drgs_cipn_claim` AS `drgs_cipn_claim` WHERE `drgs_cipn_claim`.`an` = :an AND `drgs_cipn_claim`.`code` = CONCAT( `drgs_charges`.`code`, '@', `drgs_charges`.`billgroup` ) ORDER BY `drgs_charges`.`billgroup` ASC";
+        $stmt = $db_conn->prepare($sql);
+        $stmt->execute(array("an" => $this->an));
+        $rec_count = $stmt->rowCount();
+        $this->drgs_cipn_claim = $stmt->fetchAll();
+        return $rec_count;
+    }
+    
     /**
      * กำหนดรูปแบบข้อมูลวันที่ตามที่กำหนด
      * ตัวอย่างรูปแบบ '20150517:141800' กำหนดเป็น 'Ymd:His'
@@ -202,22 +230,52 @@ class cipn_xlm {
         $this->dom->getElementsByTagName('IPDxOp')->item(0)->nodeValue = $node_value;
     }
 
-     /**
+    /**
      * Invoices ส่วน xml ค่ารักษาทุกรายการ
      * @access private
      */
     private function Invoices() {
         $rec_count = $this->get_drgs_invoices();
-        //$node_value = "58-0001";
-        /*foreach ($this->drgs_ipdxop as $value) {
-            $node_value .= $this->an . "|" . $value['ipdxop'] . "|" . $this->get_data_format($value['datein']) . "|" . $this->get_data_format($value['dateout']) . "|\n";
-        }*/
+        $node_value = "";
+        $inv_total = 0;
+        $inv_discount = 0;
+        foreach ($this->drgs_invoices as $value) {
+            $node_value .= $value['invoices'] . "|\n";
+            $inv_total += $value['amount'];
+        }
         $this->dom->getElementsByTagName('InvNumber')->item(0)->nodeValue = "58-0001"; //เลข Invoice ขนาดไม่เกิน 9 ตัวอักษร
         $this->dom->getElementsByTagName('InvDT')->item(0)->nodeValue = "20150517"; //วันเวลาที่ออก Invoice รูปแบบ YYYYMMDD
         $this->dom->getElementsByTagName('InvItems')->item(0)->setAttribute('Reccount', $rec_count);
+        $this->dom->getElementsByTagName('InvItems')->item(0)->nodeValue = $node_value;
+        $this->dom->getElementsByTagName('InvTotal')->item(0)->nodeValue = number_format($inv_total, 2, '.', ''); // รูปแบบ 0000.00
+        $this->dom->getElementsByTagName('InvAddDiscount')->item(0)->nodeValue = number_format($inv_discount, 2, '.', '');
     }
 
-    
+    /**
+     * CIPNClaim ส่วน xml ข้อมูลรายการเบิกค่ารักษาส่วนนอก DRG
+     * ค่าห้อง ค่าอาหาร และค่าอวัยวะเทียมและอุปกรณ์
+     * @access private
+     */
+    private function CIPNClaim() {
+        $rec_count = $this->get_drgs_cipn_claim();
+        $room_deduct = 0;
+        $room_non_deduct = 0;
+        $med_deduct = 0;
+        $med_non_deduct = 0;
+        $node_value = "";
+        foreach ($this->drgs_cipn_claim as $value) {
+            $node_value .= $value['cipnclaim'] . "|\n";
+            $room_deduct += $value['claim'];
+        }
+        
+        $this->dom->getElementsByTagName('FeeScheduleItems')->item(0)->setAttribute('Reccount', $rec_count);
+        $this->dom->getElementsByTagName('FeeScheduleItems')->item(0)->nodeValue = $node_value; //รายการส่วนนอก DRG
+        $this->dom->getElementsByTagName('DeductRoomBoard')->item(0)->nodeValue = number_format($room_deduct, 2, '.', ''); //รวมค่าห้องค่าอาหารส่วนที่เบิกได้
+        $this->dom->getElementsByTagName('nonDeductRoomBoard')->item(0)->nodeValue = number_format($room_non_deduct, 2, '.', ''); //รวมค่าห้องค่าอาหารส่วนที่เกิน
+        $this->dom->getElementsByTagName('DeductMedDev')->item(0)->nodeValue = number_format($med_deduct, 2, '.', ''); //รวมค่าอวัยวะเทียมฯ ที่เบิกได้
+        $this->dom->getElementsByTagName('nonDeductMedDev')->item(0)->nodeValue = number_format($med_non_deduct, 2, '.', ''); //รวมค่าอวัยวะเทียมฯ ส่วนที่เกิน
+    }
+
     /**
      * save เพื่อสร้างไฟล์ CIPN กำหนดชื่อไฟล์ตามรูป [รหัสรพ.]-CIPN-[AN.]-[$this->file_datetime]-utf8.xml
      * @param string an รหัสอ้างอิงเป็น AN. รพ.
