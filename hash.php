@@ -7,5 +7,5 @@
  */
 
 $algo = 'md5';
-$filename = '11720-CIPN-5800010-20150517213204.txt';
+$filename = './TXTFiles/11720-CIPN-5800010-20150517213204.txt';
 echo hash_file($algo, $filename);

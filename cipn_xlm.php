@@ -58,7 +58,7 @@ class cipn_xlm {
      * 2. amount ยอดรวมแต่ละรายการที่หักส่วนลดแล้ว
      */
     private $drgs_invoices = null;
-    
+
     /**
      * ข้อมูลค่ารักษา จากตาราง drgs_cipn_claim
      * 
@@ -147,7 +147,7 @@ class cipn_xlm {
         return $rec_count;
     }
 
-     /**
+    /**
      * ค้นหาข้อมูลจาก AN. ของ PAA ที่เบิกค่ารักษา เพื่อใช้ในส่วน CIPNClaim
      * @access private
      */
@@ -166,7 +166,7 @@ class cipn_xlm {
         $this->drgs_cipn_claim = $stmt->fetchAll();
         return $rec_count;
     }
-    
+
     /**
      * กำหนดรูปแบบข้อมูลวันที่ตามที่กำหนด
      * ตัวอย่างรูปแบบ '20150517:141800' กำหนดเป็น 'Ymd:His'
@@ -267,7 +267,7 @@ class cipn_xlm {
             $node_value .= $value['cipnclaim'] . "|\n";
             $room_deduct += $value['claim'];
         }
-        
+
         $this->dom->getElementsByTagName('FeeScheduleItems')->item(0)->setAttribute('Reccount', $rec_count);
         $this->dom->getElementsByTagName('FeeScheduleItems')->item(0)->nodeValue = $node_value; //รายการส่วนนอก DRG
         $this->dom->getElementsByTagName('DeductRoomBoard')->item(0)->nodeValue = number_format($room_deduct, 2, '.', ''); //รวมค่าห้องค่าอาหารส่วนที่เบิกได้
@@ -277,12 +277,27 @@ class cipn_xlm {
     }
 
     /**
+     * แปลงไฟล์ UTF8 เป็น TIS-620
+     */
+    private function convert_xml($file_name) {
+        $myfile = fopen($file_name . '-utf8.xml', "r") or die("Unable to open file!");
+        while (!feof($myfile)) {
+            echo iconv("UTF-8", "tis-620", fgets($myfile));
+        }
+        fclose($myfile);
+        //$myfile = fopen("./HIS/REQ/$today$patient[hn].hl7", "w") or die("Unable to open file!");
+        //fwrite($myfile, $segment);
+    }
+
+    /**
      * save เพื่อสร้างไฟล์ CIPN กำหนดชื่อไฟล์ตามรูป [รหัสรพ.]-CIPN-[AN.]-[$this->file_datetime]-utf8.xml
      * @param string an รหัสอ้างอิงเป็น AN. รพ.
      * @access private
      */
     public function save() {
-        $this->dom->save('11720-CIPN-' . $this->an . '-' . $this->file_datetime . '-utf8.xml');
+        $file_name = '11720-CIPN-' . $this->an . '-' . $this->file_datetime;
+        $this->dom->save($file_name . '-utf8.xml');
+        $this->convert_xml($file_name);
     }
 
 }
