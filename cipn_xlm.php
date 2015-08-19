@@ -280,13 +280,17 @@ class cipn_xlm {
      * แปลงไฟล์ UTF8 เป็น TIS-620
      */
     private function convert_xml($file_name) {
-        $myfile = fopen($file_name . '-utf8.xml', "r") or die("Unable to open file!");
-        while (!feof($myfile)) {
-            echo iconv("UTF-8", "tis-620", fgets($myfile));
+        $file_read = fopen($file_name . '-utf8.xml', "r") or die("Unable to open file!");
+        $file_write = fopen($file_name.'.txt', "w") or die("Unable to open file!");
+        fgets($file_read); //อ่านบรรทัดแรกก่อน
+        while (!feof($file_read)) {
+            $str_line = trim(fgets($file_read),"\n");
+            if($str_line != ""){
+                fwrite($file_write, iconv("UTF-8", "tis-620", $str_line."\r\n"));
+            }
         }
-        fclose($myfile);
-        //$myfile = fopen("./HIS/REQ/$today$patient[hn].hl7", "w") or die("Unable to open file!");
-        //fwrite($myfile, $segment);
+        fclose($file_read);
+        fclose($file_write);
     }
 
     /**
