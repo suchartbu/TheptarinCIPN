@@ -16,7 +16,7 @@ class my_exception extends Exception {
  * 2. สร้างแต่ละส่วนของ xml ทั้งหมด
  * 3. แปลงไฟล์ utf-8 เป็น windows-874
  * @author orr
- * @link https://drive.google.com/file/d/0B-ZGLhvwK9V7YUttVk4zV2FOVjg/view?usp=sharing ข้อกำหนดไฟล์ CIPN
+ * @link  ข้อกำหนดไฟล์ CIPN
  */
 class cipn_xlm {
 
@@ -34,6 +34,11 @@ class cipn_xlm {
      * ค่าตัวเลขวันที่เวลาที่ของไฟล์ รูปแบบ YYYYMMDDHHMMSS
      */
     private $file_datetime = 0;
+    
+    /**
+     * ชื่อไฟล์ CIPN 
+     */
+    private $file_name = "";
 
     /**
      * ข้อมูลเกี่ยวกับผู้ป่วยที่เบิกค่ารักษา จากตาราง drgs_ipadt
@@ -103,8 +108,6 @@ class cipn_xlm {
         $stmt = $db_conn->prepare($sql);
         $stmt->execute(array("an" => $this->an));
         $this->drgs_ipadt = $stmt->fetch();
-
-        //print_r($this->drgs_ipadt);
     }
 
     /**
@@ -277,31 +280,47 @@ class cipn_xlm {
     }
 
     /**
-     * แปลงไฟล์ UTF8 เป็น TIS-620
+     * แปลงไฟล์ UTF8 เป็น TIS-620 ปรับรูปแบบไฟล์เพื่อให้ windows ใช้งานได้
+     * @access private
+     * @return string hash_value ของไฟล์
      */
-    private function convert_xml($file_name) {
-        $file_read = fopen($file_name . '-utf8.xml', "r") or die("Unable to open file!");
-        $file_write = fopen($file_name.'.txt', "w") or die("Unable to open file!");
+    private function convert_xml() {
+        $file_read = fopen($this->file_name . '-utf8.xml', "r") or die("Unable to open file!");
+        $file_write = fopen($this->file_name . '.txt', "w") or die("Unable to open file!");
         fgets($file_read); //อ่านบรรทัดแรกก่อน
         while (!feof($file_read)) {
-            $str_line = trim(fgets($file_read),"\n");
-            if($str_line != ""){
-                fwrite($file_write, iconv("UTF-8", "tis-620", $str_line."\r\n"));
+            $str_line = trim(fgets($file_read), "\n");
+            if ($str_line != "") {
+                fwrite($file_write, iconv("UTF-8", "tis-620", $str_line . "\r\n"));
             }
         }
         fclose($file_read);
         fclose($file_write);
+        return hash_file("md5", $this->file_name . ".txt");
     }
 
     /**
-     * save เพื่อสร้างไฟล์ CIPN กำหนดชื่อไฟล์ตามรูป [รหัสรพ.]-CIPN-[AN.]-[$this->file_datetime]-utf8.xml
-     * @param string an รหัสอ้างอิงเป็น AN. รพ.
+     * สร้างไฟล์ XML CIPN 
+     * @access private
+     */
+    private function create_xml($str_hash) {
+        $file_read = fopen($this->file_name . '.txt', "r") or die("Unable to open file!");
+        $file_write = fopen($this->file_name . '.xml', "w") or die("Unable to open file!");
+        fwrite($file_write, '<?xml version="1.0" encoding="windows-874"?>');
+        while (!feof($file_read)) {
+            fwrite($file_write, fgets($file_read));
+        }
+        fwrite($file_write, '<?EndNote HMAC = "' . $str_hash . '" ?>');
+    }
+
+    /**
+     * สร้างไฟล์ CIPN กำหนดชื่อไฟล์ตามรูป [รหัสรพ.]-CIPN-[AN.]-[$this->file_datetime].xml
      * @access private
      */
     public function save() {
-        $file_name = '11720-CIPN-' . $this->an . '-' . $this->file_datetime;
-        $this->dom->save($file_name . '-utf8.xml');
-        $this->convert_xml($file_name);
+        $this->file_name = '11720-CIPN-' . $this->an . '-' . $this->file_datetime;
+        $this->dom->save($this->file_name . '-utf8.xml');
+        $this->create_xml($this->convert_xml());
     }
 
 }
