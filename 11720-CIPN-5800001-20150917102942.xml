@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="windows-874"?><CIPN>
+  <Header>
+    <DocCLass>IPDClaim</DocCLass>
+    <DocSysID version="1.0">CIPN</DocSysID>
+    <serviceEvent>ADT</serviceEvent>
+    <authorID>11720</authorID>
+    <authorName>รพ.เทพธารินทร์</authorName>
+    <DocumentRef>5800001</DocumentRef>
+    <effectiveTime>20150917102942</effectiveTime>
+  </Header>
+  <ClaimAuth>
+    <AuthCode>PHG8SSJ00</AuthCode>
+    <AuthDT>20150512:141800</AuthDT>
+  </ClaimAuth>
+  <IPADT>5800001|58-00001|0|1172000000001|น.ส.|ทดสอบ 1 เทพธารินทร์|19570913|2|2|10|01|99|20150512|153500|20150517|120000|0|N|1|1||IPD|03|IP||31|10|||</IPADT>
+  <IPDxOp Reccount="3">5800001|P|1|741|23478|20150512:192000|20150512:200500|
+5800001|D|1|O342|23478|||
+5800001|D|2|O820|23478|||
+</IPDxOp>
+  <Invoices>
+    <Invoice>
+      <InvNumber>58-0001</InvNumber>
+      <InvDT>20150517</InvDT>
+      <InvItems Reccount="1">5800001|20150515|17|21550|21550|ต่อครั้ง|1|500.00|1|500.00|0.00|
+</InvItems>
+      <InvTotal>500.00</InvTotal>
+      <InvAddDiscount>0.00</InvAddDiscount>
+    </Invoice>
+  </Invoices>
+  <CIPNClaim>
+    <FeeScheduleItems Reccount="0"></FeeScheduleItems>
+    <DeductRoomBoard>0.00</DeductRoomBoard>
+    <nonDeductRoomBoard>0.00</nonDeductRoomBoard>
+    <DeductMedDev>0.00</DeductMedDev>
+    <nonDeductMedDev>0.00</nonDeductMedDev>
+  </CIPNClaim>
+  <CoInsurance>
+    <Insurance>
+      <InsuranceClass>
+      </InsuranceClass>
+      <InsTotal>
+      </InsTotal>
+      <InsRoomBoard>
+      </InsRoomBoard>
+      <InsProfFee>
+      </InsProfFee>
+      <InsOther>
+      </InsOther>
+    </Insurance>
+  </CoInsurance>
+  <PatCopay>
+    <nonDeductRoomBoard>0.00</nonDeductRoomBoard>
+    <nonDeductMedDev>0.00</nonDeductMedDev>
+    <ProfFee>0.00</ProfFee>
+    <Surcharge>0.00</Surcharge>
+    <nonMedCare>0.00</nonMedCare>
+  </PatCopay>
+  <Referral/>
+</CIPN>
+<?EndNote HMAC = "c21f50877161b5c09ea99f21b9394fca" ?>
